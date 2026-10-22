@@ -66,6 +66,7 @@ public class FoodSampleService {
         dto.setNotes(sample.getNotes());
         dto.setDeviceId(sample.getDeviceId());
         dto.setStatus(sample.getStatus());
+        dto.setImageUrl(sample.getImageUrl());
         dto.setCreatedAt(sample.getCreatedAt());
 
         // Find latest sensor reading if available

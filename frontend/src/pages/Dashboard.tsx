@@ -254,9 +254,18 @@ export const Dashboard: React.FC = () => {
               Real-Time Ingestion Pods (Multimodal Channels)
             </h2>
           </div>
-          <span className="text-[11px] font-mono text-slate-400">
-            Source: {latestReading?.source || 'SIMULATED'} · 100% Signal
-          </span>
+          <div className="flex items-center gap-2 text-[11px] font-mono">
+            <span className={`px-2.5 py-0.5 rounded-full font-bold border ${
+              (latestReading?.source === 'REAL' || latestReading?.source === 'ESP32_REAL' || latestReading?.source === 'REAL_ESP32')
+                ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-glow-cyan'
+                : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+            }`}>
+              {(latestReading?.source === 'REAL' || latestReading?.source === 'ESP32_REAL' || latestReading?.source === 'REAL_ESP32')
+                ? 'REAL ESP32 HARDWARE'
+                : 'VIRTUAL SIMULATOR'}
+            </span>
+            <span className="text-slate-400">Node: {latestReading?.deviceId || 'ESP32_STATION_ALPHA'}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

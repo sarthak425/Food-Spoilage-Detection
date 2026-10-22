@@ -31,3 +31,10 @@ Thumbs.db
 # Temporary automation scripts
 populate_*.py
 update_*.py
+
+# Large model weights (auto-downloaded on first run) and user uploads
+*.pt
+uploads/
+models/*.pt
+ai-service/yolov8n.pt
+

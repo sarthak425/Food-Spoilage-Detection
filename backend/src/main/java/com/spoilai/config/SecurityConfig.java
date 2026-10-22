@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -33,31 +32,29 @@ public class SecurityConfig {
     private final UserDetailsServiceImpl userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AuthTokenFilter authTokenFilter;
+    private final PasswordEncoder passwordEncoder;
 
     public SecurityConfig(UserDetailsServiceImpl userDetailsService,
                           AuthEntryPointJwt unauthorizedHandler,
-                          AuthTokenFilter authTokenFilter) {
+                          AuthTokenFilter authTokenFilter,
+                          PasswordEncoder passwordEncoder) {
         this.userDetailsService = userDetailsService;
         this.unauthorizedHandler = unauthorizedHandler;
         this.authTokenFilter = authTokenFilter;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -81,21 +78,42 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public auth endpoints
+                // Public auth endpoints (login, register)
                 .requestMatchers("/api/auth/**").permitAll()
-                // Public OpenAPI/Swagger documentation
+                // Public OpenAPI / Swagger documentation
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
                 // WebSocket STOMP handshake
                 .requestMatchers("/ws-sensor/**").permitAll()
-                // Sensor ingestion (ESP32 and Simulator - supports API key or open ingest in dev)
-                .requestMatchers(HttpMethod.POST, "/api/sensors/readings").permitAll()
-                .requestMatchers("/api/sensors/**").permitAll()
-                .requestMatchers("/api/simulator/**").permitAll()
-                .requestMatchers("/api/dashboard/**").permitAll()
-                .requestMatchers("/api/actuators/**").permitAll()
-                .requestMatchers("/api/food-samples/**").permitAll()
-                .requestMatchers("/api/devices/**").permitAll()
-                .requestMatchers("/api/alerts/**").permitAll()
+                // Uploaded static food images preview
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+                // Sensor Ingestion endpoint: Requires either authenticated Device (ESP32) or authenticated User (Simulator)
+                .requestMatchers(HttpMethod.POST, "/api/sensors/readings").hasAnyRole("DEVICE", "USER", "ADMIN")
+
+                // Telemetry history and queries: Require authenticated user
+                .requestMatchers("/api/sensors/**").hasAnyRole("USER", "ADMIN")
+
+                // Device management: Require authenticated user
+                .requestMatchers("/api/devices/**").hasAnyRole("USER", "ADMIN")
+
+                // Actuator controls: Require authenticated user
+                .requestMatchers("/api/actuators/**").hasAnyRole("USER", "ADMIN")
+
+                // Food samples: Require authenticated user
+                .requestMatchers("/api/food-samples/**").hasAnyRole("USER", "ADMIN")
+
+                // Alerts: Require authenticated user
+                .requestMatchers("/api/alerts/**").hasAnyRole("USER", "ADMIN")
+
+                // Simulator control: Require authenticated user
+                .requestMatchers("/api/simulator/**").hasAnyRole("USER", "ADMIN")
+
+                // Dashboard summary: Require authenticated user
+                .requestMatchers("/api/dashboard/**").hasAnyRole("USER", "ADMIN")
+
+                // AI intelligence services: Require authenticated user
+                .requestMatchers("/api/ai/**").hasAnyRole("USER", "ADMIN")
+
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             );

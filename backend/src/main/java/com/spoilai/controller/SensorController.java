@@ -23,7 +23,7 @@ public class SensorController {
     }
 
     @PostMapping("/readings")
-    @Operation(summary = "Receive sensor telemetry from ESP32 or Virtual Simulator")
+    @Operation(summary = "Receive sensor telemetry from authenticated ESP32 or Simulator")
     public ResponseEntity<SensorReadingResponseDto> ingestReading(@Valid @RequestBody SensorReadingRequestDto readingDto) {
         return ResponseEntity.ok(sensorService.ingestReading(readingDto));
     }
@@ -45,14 +45,20 @@ public class SensorController {
     }
 
     @GetMapping("/history")
-    @Operation(summary = "Get recent sensor readings history")
-    public ResponseEntity<List<SensorReadingResponseDto>> getHistory(@RequestParam(required = false) Long sampleId) {
-        return ResponseEntity.ok(sensorService.getRecentHistory(sampleId));
+    @Operation(summary = "Get recent sensor readings history with optional deviceId, sampleId, or source filters")
+    public ResponseEntity<List<SensorReadingResponseDto>> getHistory(
+            @RequestParam(required = false) Long sampleId,
+            @RequestParam(required = false) String deviceId,
+            @RequestParam(required = false) String source) {
+        return ResponseEntity.ok(sensorService.getRecentHistory(sampleId, deviceId, source));
     }
 
     @GetMapping("/history/{sampleId}")
     @Operation(summary = "Get recent sensor readings history for a specific food sample")
-    public ResponseEntity<List<SensorReadingResponseDto>> getSampleHistory(@PathVariable Long sampleId) {
-        return ResponseEntity.ok(sensorService.getRecentHistory(sampleId));
+    public ResponseEntity<List<SensorReadingResponseDto>> getSampleHistory(
+            @PathVariable Long sampleId,
+            @RequestParam(required = false) String deviceId,
+            @RequestParam(required = false) String source) {
+        return ResponseEntity.ok(sensorService.getRecentHistory(sampleId, deviceId, source));
     }
 }

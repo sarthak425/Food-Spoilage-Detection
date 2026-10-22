@@ -39,6 +39,9 @@ public class FoodSample {
     @Column(length = 30)
     private String status = "ACTIVE";
 
+    @Column(name = "image_url", length = 255)
+    private String imageUrl;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -88,6 +91,8 @@ public class FoodSample {
     public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

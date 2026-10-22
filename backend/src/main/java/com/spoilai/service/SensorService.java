@@ -4,10 +4,13 @@ import com.spoilai.dto.SensorReadingRequestDto;
 import com.spoilai.dto.SensorReadingResponseDto;
 import com.spoilai.entity.Device;
 import com.spoilai.entity.SensorReading;
+import com.spoilai.exception.DeviceUnauthorizedException;
 import com.spoilai.exception.InvalidSensorReadingException;
 import com.spoilai.repository.DeviceRepository;
 import com.spoilai.repository.SensorReadingRepository;
 import com.spoilai.websocket.WebSocketSensorPublisher;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +42,20 @@ public class SensorService {
 
     @Transactional
     public SensorReadingResponseDto ingestReading(SensorReadingRequestDto dto) {
-        // 1. Validate Sensor Value Ranges
+        // 1. Verify device authorization identity if authenticated as ROLE_DEVICE
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DEVICE"))) {
+            String authenticatedDeviceId = auth.getName();
+            if (!authenticatedDeviceId.equalsIgnoreCase(dto.getDeviceId())) {
+                throw new DeviceUnauthorizedException("Authenticated device ID ('" + authenticatedDeviceId +
+                        "') does not match payload deviceId ('" + dto.getDeviceId() + "')");
+            }
+        }
+
+        // 2. Validate Sensor Value Plausibility Ranges
         validateReadingRanges(dto);
 
-        // 2. Validate / Update Device
+        // 3. Validate / Update Device
         Device device = deviceRepository.findByDeviceId(dto.getDeviceId())
                 .orElseGet(() -> {
                     Device newDevice = new Device(dto.getDeviceId(), "Auto-Discovered Node",
@@ -53,7 +66,7 @@ public class SensorService {
         device.setStatus("ONLINE");
         deviceRepository.save(device);
 
-        // 3. Prevent Rapid Duplicates (< 400ms from same device)
+        // 4. Prevent Rapid Duplicates (< 400ms from same device)
         Optional<SensorReading> lastReadingOpt = sensorReadingRepository.findTopByDeviceIdOrderByTimestampDesc(dto.getDeviceId());
         if (lastReadingOpt.isPresent() && dto.getTimestamp() != null) {
             LocalDateTime lastTime = lastReadingOpt.get().getTimestamp();
@@ -63,7 +76,7 @@ public class SensorService {
             }
         }
 
-        // 4. Construct Entity
+        // 5. Construct Entity
         SensorReading reading = new SensorReading();
         reading.setDeviceId(dto.getDeviceId());
         reading.setFoodSampleId(dto.getFoodSampleId());
@@ -87,18 +100,18 @@ public class SensorService {
         reading.setWeightGrams(dto.getWeightGrams());
         reading.setLightLux(dto.getLightLux());
 
-        // 5. Persist to MySQL
+        // 6. Persist to Database
         SensorReading saved = sensorReadingRepository.save(reading);
         SensorReadingResponseDto responseDto = mapToDto(saved);
 
-        // 6. Threshold Checks & Alerts
+        // 7. Threshold Checks & Alerts
         alertService.evaluateSensorThresholds(dto);
 
-        // 7. Actuator Automation Rules (Simulated)
+        // 8. Actuator Automation Rules (Simulated)
         double gasVal = (dto.getGas() != null && dto.getGas().getValue() != null) ? dto.getGas().getValue() : 0.0;
         actuatorService.evaluateActuatorAutomations(dto.getTemperatureC(), dto.getHumidityPercent(), gasVal);
 
-        // 8. Real-Time Broadcast via WebSocket
+        // 9. Real-Time Broadcast via WebSocket
         webSocketPublisher.publishSensorReading(responseDto);
 
         return responseDto;
@@ -127,10 +140,19 @@ public class SensorService {
         return sensorReadingRepository.findTopByFoodSampleIdOrderByTimestampDesc(sampleId).map(this::mapToDto);
     }
 
-    public List<SensorReadingResponseDto> getRecentHistory(Long sampleId) {
-        List<SensorReading> readings = (sampleId != null)
-                ? sensorReadingRepository.findTop50ByFoodSampleIdOrderByTimestampDesc(sampleId)
-                : sensorReadingRepository.findTop50ByDeviceIdOrderByTimestampDesc("VIRTUAL_SENSOR_01");
+    public List<SensorReadingResponseDto> getRecentHistory(Long sampleId, String deviceId, String source) {
+        List<SensorReading> readings;
+        if (deviceId != null && !deviceId.isBlank() && sampleId != null) {
+            readings = sensorReadingRepository.findTop50ByDeviceIdAndFoodSampleIdOrderByTimestampDesc(deviceId, sampleId);
+        } else if (deviceId != null && !deviceId.isBlank()) {
+            readings = sensorReadingRepository.findTop50ByDeviceIdOrderByTimestampDesc(deviceId);
+        } else if (sampleId != null) {
+            readings = sensorReadingRepository.findTop50ByFoodSampleIdOrderByTimestampDesc(sampleId);
+        } else if (source != null && !source.isBlank()) {
+            readings = sensorReadingRepository.findTop50BySourceOrderByTimestampDesc(source.toUpperCase());
+        } else {
+            readings = sensorReadingRepository.findTop50ByOrderByTimestampDesc();
+        }
 
         return readings.stream()
                 .map(this::mapToDto)

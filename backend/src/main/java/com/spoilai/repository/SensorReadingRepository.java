@@ -11,8 +11,12 @@ import java.util.Optional;
 
 @Repository
 public interface SensorReadingRepository extends JpaRepository<SensorReading, Long> {
+    List<SensorReading> findTop50ByOrderByTimestampDesc();
     List<SensorReading> findTop50ByFoodSampleIdOrderByTimestampDesc(Long foodSampleId);
     List<SensorReading> findTop50ByDeviceIdOrderByTimestampDesc(String deviceId);
+    List<SensorReading> findTop50BySourceOrderByTimestampDesc(String source);
+    List<SensorReading> findTop50ByDeviceIdAndFoodSampleIdOrderByTimestampDesc(String deviceId, Long foodSampleId);
+
     List<SensorReading> findTop100ByOrderByTimestampDesc();
     Optional<SensorReading> findTopByFoodSampleIdOrderByTimestampDesc(Long foodSampleId);
     Optional<SensorReading> findTopByDeviceIdOrderByTimestampDesc(String deviceId);

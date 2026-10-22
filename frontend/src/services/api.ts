@@ -56,9 +56,12 @@ export const sensorApi = {
     const res = await client.get<SensorReading>(url);
     return res.status === 204 ? null : res.data;
   },
-  getHistory: async (sampleId?: number): Promise<SensorReading[]> => {
-    const url = sampleId ? `/sensors/history/${sampleId}` : '/sensors/history';
-    const res = await client.get<SensorReading[]>(url);
+  getHistory: async (sampleId?: number, deviceId?: string, source?: string): Promise<SensorReading[]> => {
+    const params: Record<string, any> = {};
+    if (sampleId) params.sampleId = sampleId;
+    if (deviceId) params.deviceId = deviceId;
+    if (source) params.source = source;
+    const res = await client.get<SensorReading[]>('/sensors/history', { params });
     return res.data;
   },
   ingestReading: async (reading: any): Promise<SensorReading> => {
@@ -130,6 +133,35 @@ export const actuatorApi = {
   },
   trigger: async (actuatorType: string, targetState: string, reason?: string): Promise<ActuatorStatus> => {
     const res = await client.post<ActuatorStatus>('/actuators/trigger', { actuatorType, targetState, reason });
+    return res.data;
+  },
+};
+
+export const aiApi = {
+  getModelsStatus: async (): Promise<any> => {
+    const res = await client.get('/ai/models/status');
+    return res.data;
+  },
+  analyzeImage: async (file: File, foodCategory = 'APPLE', sampleId?: number): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('foodCategory', foodCategory);
+    if (sampleId) formData.append('sampleId', sampleId.toString());
+    const res = await client.post('/ai/predict/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+  predictSensor: async (payload: any): Promise<any> => {
+    const res = await client.post('/ai/predict/sensor', payload);
+    return res.data;
+  },
+  predictFusion: async (payload: any): Promise<any> => {
+    const res = await client.post('/ai/predict/fusion', payload);
+    return res.data;
+  },
+  predictShelfLife: async (foodCategory = 'APPLE', riskScore = 20.0): Promise<any> => {
+    const res = await client.post(`/ai/predict/shelf-life?foodCategory=${encodeURIComponent(foodCategory)}&riskScore=${riskScore}`);
     return res.data;
   },
 };

@@ -52,12 +52,13 @@ SCENARIOS = {
     }
 }
 
-def run_simulator(backend_url, device_id, food_sample_id, scenario_name, interval_sec, max_readings):
+def run_simulator(backend_url, device_id, device_key, food_sample_id, source, scenario_name, interval_sec, max_readings):
     scenario = SCENARIOS.get(scenario_name.upper(), SCENARIOS["NORMAL"])
     print(f"==================================================")
-    print(f"🚀 Spoil AI — Virtual ESP32 Hardware Simulator")
+    print(f"[INFO] Spoil AI Hardware ESP32 & Sensor Node Ingestion")
     print(f"Target Endpoint : {backend_url}/api/sensors/readings")
     print(f"Device ID       : {device_id}")
+    print(f"Telemetry Source: {source}")
     print(f"Food Sample ID  : {food_sample_id}")
     print(f"Scenario        : {scenario_name}")
     print(f"Interval        : {interval_sec}s")
@@ -83,7 +84,7 @@ def run_simulator(backend_url, device_id, food_sample_id, scenario_name, interva
         payload = {
             "deviceId": device_id,
             "foodSampleId": food_sample_id,
-            "source": "SIMULATED",
+            "source": source.upper(),
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "temperatureC": temp,
             "humidityPercent": hum,
@@ -98,17 +99,21 @@ def run_simulator(backend_url, device_id, food_sample_id, scenario_name, interva
         }
 
         data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            endpoint,
-            data=data_bytes,
-            headers={"Content-Type": "application/json", "User-Agent": "SpoilAI-VirtualESP32/1.0"}
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "SpoilAI-ESP32-Firmware/2.4",
+            "X-Device-Id": device_id,
+            "X-Device-Key": device_key
+        }
+        req = urllib.request.Request(endpoint, data=data_bytes, headers=headers)
 
         try:
             with urllib.request.urlopen(req, timeout=5) as response:
                 status = response.getcode()
                 count += 1
-                print(f"[{count:04d}] Sent: Temp={temp}°C | Humidity={hum}% | Gas={gas} ADC | W={weight}g -> HTTP {status}")
+                print(f"[{count:04d}] Authenticated telemetry sent ({device_id}): Temp={temp}°C | Humidity={hum}% | Gas={gas} ADC | W={weight}g -> HTTP {status}")
+        except urllib.error.HTTPError as e:
+            print(f"[AUTH ERROR] Ingestion rejected HTTP {e.code}: {e.reason}")
         except urllib.error.URLError as e:
             print(f"[WARN] Connection failed to {endpoint}: {e.reason}")
         except Exception as e:
@@ -117,13 +122,25 @@ def run_simulator(backend_url, device_id, food_sample_id, scenario_name, interva
         time.sleep(interval_sec)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Spoil AI Virtual ESP32 Simulator")
+    parser = argparse.ArgumentParser(description="Spoil AI Hardware ESP32 & Virtual Sensor Simulator")
     parser.add_argument("--url", default="http://localhost:8080", help="Spring Boot Backend URL")
-    parser.add_argument("--device", default="VIRTUAL_SENSOR_01", help="Device Identifier")
+    parser.add_argument("--device", default="ESP32_STATION_ALPHA", help="Device Identifier (e.g. ESP32_STATION_ALPHA or VIRTUAL_SENSOR_01)")
+    parser.add_argument("--key", default=None, help="Device API Key (defaults to device pre-shared key)")
     parser.add_argument("--sample", type=int, default=1, help="Food Sample ID")
+    parser.add_argument("--source", default="REAL", choices=["REAL", "SIMULATED"], help="Reading source indicator")
     parser.add_argument("--scenario", default="NORMAL", choices=["NORMAL", "WARMING", "HIGH_HUMIDITY", "SPOILAGE_PRONE"])
     parser.add_argument("--interval", type=float, default=3.0, help="Sampling interval in seconds")
     parser.add_argument("--count", type=int, default=None, help="Max readings to send (default: unlimited)")
     args = parser.parse_args()
 
-    run_simulator(args.url, args.device, args.sample, args.scenario, args.interval, args.count)
+    # Pre-shared keys initialized in DataInitializer
+    default_keys = {
+        "VIRTUAL_SENSOR_01": "virtual_node_secret_key",
+        "ESP32_STATION_ALPHA": "esp32_secret_alpha_key"
+    }
+    key = args.key or default_keys.get(args.device, "esp32_secret_alpha_key")
+
+    def run_wrapper():
+        run_simulator(args.url, args.device, key, args.sample, args.source, args.scenario, args.interval, args.count)
+
+    run_wrapper()

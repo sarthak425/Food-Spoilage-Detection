@@ -12,6 +12,7 @@ public class FoodSampleResponseDto {
     private String notes;
     private String deviceId;
     private String status;
+    private String imageUrl;
     private LocalDateTime createdAt;
     private SensorReadingResponseDto latestReading;
 
@@ -35,6 +36,8 @@ public class FoodSampleResponseDto {
     public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public SensorReadingResponseDto getLatestReading() { return latestReading; }
