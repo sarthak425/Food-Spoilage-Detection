@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class DeviceController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @Operation(summary = "Register a new device (ESP32 or Virtual node)")
     public ResponseEntity<DeviceDto> registerDevice(@Valid @RequestBody DeviceDto deviceDto) {
         return ResponseEntity.ok(deviceService.registerDevice(deviceDto));

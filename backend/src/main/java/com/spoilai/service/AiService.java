@@ -53,9 +53,13 @@ public class AiService {
         validateImageFile(file);
 
         // 2. Storage
-        String fileExtension = getFileExtension(file.getOriginalFilename());
+        String fileExtension = getSafeExtension(file.getContentType());
         String storedFilename = "food_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + fileExtension;
-        Path targetPath = uploadDir.resolve(storedFilename);
+        Path targetPath = uploadDir.toAbsolutePath().normalize().resolve(storedFilename).normalize();
+
+        if (!targetPath.startsWith(uploadDir.toAbsolutePath().normalize())) {
+            throw new SecurityException("Illegal path traversal attempt detected in filename.");
+        }
 
         try {
             Files.copy(file.getInputStream(), targetPath);
@@ -244,8 +248,12 @@ public class AiService {
         return false;
     }
 
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) return "jpg";
-        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+    private String getSafeExtension(String contentType) {
+        if (contentType == null) return "jpg";
+        return switch (contentType.toLowerCase()) {
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> "jpg";
+        };
     }
 }

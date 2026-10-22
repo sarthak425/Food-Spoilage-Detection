@@ -3,6 +3,7 @@ package com.spoilai.config;
 import com.spoilai.security.AuthEntryPointJwt;
 import com.spoilai.security.AuthTokenFilter;
 import com.spoilai.security.UserDetailsServiceImpl;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -33,6 +35,9 @@ public class SecurityConfig {
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AuthTokenFilter authTokenFilter;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${spoilai.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:8080}")
+    private String allowedOrigins;
 
     public SecurityConfig(UserDetailsServiceImpl userDetailsService,
                           AuthEntryPointJwt unauthorizedHandler,
@@ -60,7 +65,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Device-Id", "X-Device-Key", "Accept"));
         configuration.setExposedHeaders(List.of("Authorization"));
@@ -84,8 +93,8 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
                 // WebSocket STOMP handshake
                 .requestMatchers("/ws-sensor/**").permitAll()
-                // Uploaded static food images preview
-                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                // Uploaded static food images preview strictly restricted to food-images directory
+                .requestMatchers(HttpMethod.GET, "/uploads/food-images/**").permitAll()
 
                 // Sensor Ingestion endpoint: Requires either authenticated Device (ESP32) or authenticated User (Simulator)
                 .requestMatchers(HttpMethod.POST, "/api/sensors/readings").hasAnyRole("DEVICE", "USER", "ADMIN")
@@ -93,7 +102,8 @@ public class SecurityConfig {
                 // Telemetry history and queries: Require authenticated user
                 .requestMatchers("/api/sensors/**").hasAnyRole("USER", "ADMIN")
 
-                // Device management: Require authenticated user
+                // Device registration and management: Require authenticated user / admin
+                .requestMatchers(HttpMethod.POST, "/api/devices").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/devices/**").hasAnyRole("USER", "ADMIN")
 
                 // Actuator controls: Require authenticated user

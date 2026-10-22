@@ -124,14 +124,18 @@ export const AiAnalysis: React.FC = () => {
       // 2. Prepare payload with visual metrics if image was analyzed
       const browning = imageResult?.spoilage_features?.surface_browning_percent ?? 12.0;
       const discoloration = imageResult?.spoilage_features?.discoloration_score ?? 0.20;
-      const visionConf = imageResult?.confidence ?? 0.88;
+      const detectionConf = imageResult?.detection_confidence ?? (imageResult?.detected_items?.[0]?.confidence ?? 0.92);
+      const visionConf = imageResult?.vision_confidence ?? imageResult?.confidence ?? 0.88;
+      const visionEmb = (imageResult as any)?.vision_embedding ?? undefined;
 
       const payload = {
         foodSampleId: selectedSampleId,
         foodCategory: selectedCategory,
         browningPercent: browning,
         discolorationScore: discoloration,
+        detectionConfidence: detectionConf,
         visionConfidence: visionConf,
+        visionEmbedding: visionEmb,
         recentReadings: history.slice(0, 30).map((r) => ({
           temperatureC: r.temperatureC,
           humidityPercent: r.humidityPercent,
@@ -227,6 +231,14 @@ export const AiAnalysis: React.FC = () => {
             <RefreshCw className="w-3.5 h-3.5 text-spoil-cyan" />
             Refresh Engine Status
           </button>
+        </div>
+
+        {/* Scientific Transparency Mode Notice */}
+        <div className="relative z-10 mt-4 flex items-center gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            <strong>DEMONSTRATION MODE (BENCHMARK):</strong> Models are calibrated on Arrhenius microbial degradation kinetics. Validation metrics reflect hold-out benchmark testing; real-world industrial compliance requires controlled chamber trials.
+          </span>
         </div>
       </div>
 
@@ -534,6 +546,37 @@ export const AiAnalysis: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Decoupled Confidences Breakdown */}
+                <div className="p-3.5 rounded-xl bg-navy-900/90 border border-navy-800 space-y-2">
+                  <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+                    <span className="font-bold text-slate-300">Decoupled Confidence Metrics</span>
+                    <span className="text-[10px] text-spoil-cyan font-mono">3 Separate Heads</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 font-mono text-center">
+                    <div className="p-2 rounded-lg bg-navy-950 border border-navy-800">
+                      <div className="text-[10px] text-slate-400">Object Detection</div>
+                      <div className="text-xs font-bold text-orange-400">
+                        {((fusionResult.detection_confidence ?? 0.92) * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-slate-500">YOLOv8</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-navy-950 border border-navy-800">
+                      <div className="text-[10px] text-slate-400">Sensor Time-Series</div>
+                      <div className="text-xs font-bold text-spoil-teal">
+                        {((fusionResult.sensor_confidence ?? 0.88) * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-slate-500">PyTorch BiLSTM</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-navy-950 border border-navy-800">
+                      <div className="text-[10px] text-slate-400">Spoilage Fusion</div>
+                      <div className="text-xs font-bold text-violet-400">
+                        {((fusionResult.spoilage_confidence ?? fusionResult.confidence) * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-slate-500">Cross-Attention</div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Attention Weights Bar */}
                 <div className="space-y-1.5 font-mono text-xs">
                   <div className="flex justify-between text-slate-400 text-[11px]">
@@ -591,7 +634,7 @@ export const AiAnalysis: React.FC = () => {
                 <div className="flex justify-between items-center pb-2 border-b border-navy-800">
                   <span className="text-spoil-teal font-bold flex items-center gap-1.5">
                     <Cpu className="w-3.5 h-3.5" />
-                    Trained Random Forest Classifier
+                    PyTorch BiLSTM Sequence Classifier
                   </span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] border ${getStageBadgeColor(sensorResult.spoilage_stage)}`}>
                     {sensorResult.spoilage_stage}

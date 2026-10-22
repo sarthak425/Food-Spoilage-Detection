@@ -137,8 +137,12 @@ export interface ImagePredictionResult {
   detected_items: DetectedItem[];
   spoilage_features: SpoilageFeatures;
   spoilage_stage: 'FRESH' | 'EARLY_SPOILAGE' | 'MODERATE_SPOILAGE' | 'SEVERE_SPOILAGE' | string;
+  detection_confidence?: number;
+  vision_confidence?: number;
   confidence: number;
   methodology?: string;
+  mode?: string;
+  demonstration_notice?: string;
   warning?: string;
 }
 
@@ -151,9 +155,13 @@ export interface SensorPredictionResult {
   foodCategory: string;
   spoilage_stage: 'FRESH' | 'EARLY_SPOILAGE' | 'MODERATE_SPOILAGE' | 'SEVERE_SPOILAGE' | string;
   risk_score: number;
+  sensor_confidence?: number;
   confidence: number;
   probabilities?: Record<string, number>;
+  temporal_attention_weights?: number[];
   features_extracted?: Record<string, any>;
+  mode?: string;
+  demonstration_notice?: string;
 }
 
 export interface FusionPredictionResult {
@@ -165,13 +173,20 @@ export interface FusionPredictionResult {
   foodCategory: string;
   overall_stage: 'FRESH' | 'EARLY_SPOILAGE' | 'MODERATE_SPOILAGE' | 'SEVERE_SPOILAGE' | string;
   risk_score: number;
+  detection_confidence?: number;
+  sensor_confidence?: number;
+  vision_confidence?: number;
+  spoilage_confidence?: number;
   confidence: number;
   attention_weights: {
     visual_branch: number;
     sensor_branch: number;
   };
   modalities_fused: string[];
+  estimated_shelf_life_days?: number;
   estimated_shelf_life_hours: number;
+  mode?: string;
+  demonstration_notice?: string;
   shelf_life_details?: {
     estimated_remaining_days: number;
     estimated_remaining_hours: number;
@@ -190,4 +205,7 @@ export interface ModelStatusItem {
   accuracy?: number;
   architecture?: string;
   notes?: string;
+  mode?: string;
+  confidence_metric?: string;
+  validation_metrics?: Record<string, any>;
 }

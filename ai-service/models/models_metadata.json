@@ -1,0 +1,52 @@
+{
+  "mode": "DEMONSTRATION MODE (SYNTHETIC BENCHMARK)",
+  "demonstration_warning": "These models and metrics are evaluated on scientifically synthesized degradation kinetics. DO NOT use as certified food safety diagnostics without empirical lab calibration.",
+  "trained_at": "2026-10-22T06:02:14.414720+00:00",
+  "models": {
+    "sensor_lstm": {
+      "name": "PyTorch-BiLSTM-Sensor-TimeSeries",
+      "architecture": "Bidirectional LSTM (2 layers, hidden_dim=64) + Temporal Self-Attention",
+      "test_accuracy_percent": 100.0,
+      "input_features": [
+        "temperatureC",
+        "humidityPercent",
+        "gasValue",
+        "weightGrams",
+        "lightLux"
+      ],
+      "sensor_means": [
+        22.0,
+        70.0,
+        420.0,
+        150.0,
+        250.0
+      ],
+      "sensor_stds": [
+        8.0,
+        18.0,
+        220.0,
+        30.0,
+        150.0
+      ],
+      "status": "ONLINE"
+    },
+    "spoilage_vision_cnn": {
+      "name": "Spoilage-Vision-CNN-Classifier",
+      "architecture": "Deep Multi-Scale Residual CNN + 64-d Visual Latent Embedding",
+      "test_accuracy_percent": 79.0,
+      "status": "ONLINE"
+    },
+    "attention_fusion": {
+      "name": "Trainable-Multimodal-Attention-Fusion",
+      "architecture": "Cross-Modal Scaled Dot-Product Attention (Vision-to-Sensor & Sensor-to-Vision)",
+      "test_accuracy_percent": 100.0,
+      "status": "ONLINE"
+    }
+  },
+  "stage_labels": {
+    "0": "FRESH",
+    "1": "EARLY_SPOILAGE",
+    "2": "MODERATE_SPOILAGE",
+    "3": "SEVERE_SPOILAGE"
+  }
+}
